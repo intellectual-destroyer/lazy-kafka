@@ -4,16 +4,15 @@ import logging
 import sys
 from functools import cached_property
 from pathlib import Path
-
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.css.query import NoMatches
-from textual.driver import Driver
 from textual.screen import Screen
 
 if TYPE_CHECKING:
+    from textual.driver import Driver
     from textual.css.types import CSSPathType
 from textual.widgets import (
     Footer,
@@ -138,14 +137,17 @@ class LazyKafka(App[None]):
         """Load action before anything visible happens."""
         try:
             logging.debug("Configuration file: %s", self._configuration_file)
-            self.lazy_kafka_config = Configuration.from_toml(self._configuration_file)
-            logging.debug("app config: %s", f"{self.lazy_kafka_config}")
+            config = Configuration.from_toml(self._configuration_file)
+            logging.debug("app config: %s", f"{config}")
+            
+            # Update the stored config
+            self.lazy_kafka_config = config
             
             # Set up the log handler with the configured max entries
-            self.log_handler.max_entries = self.lazy_kafka_config.max_log_entries
+            self.log_handler.set_max_entries(config.max_log_entries)
             
             # Set the initial log level from config
-            self.log_handler.set_min_level(self.lazy_kafka_config.log_level)
+            self.log_handler.set_min_level(config.log_level)
         except Exception as e:
             logging.error("Failed to load configuration: %s", e)
 
@@ -170,13 +172,14 @@ def main():
         logging.basicConfig(
             level="NOTSET",
             handlers=[app.log_handler, textual_handler],
+            force=True,
         )
         
         # Set the logging level for the root logger
         logging.getLogger().setLevel("NOTSET")
         
         # Configure the log handler settings after app is created
-        # This will be updated in on_load when config is fully loaded
+        # Default to INFO level, will be updated in on_load when config is fully loaded
         app.log_handler.set_min_level("INFO")
         
         app.run()
