@@ -100,7 +100,7 @@ class TopicMetadata(ConfluentTopicMetadata):
     error: Any
 
     def to_table_values(self):
-        return self.__dict__()
+        return self.__dict__
 
 
 class Topic(str):

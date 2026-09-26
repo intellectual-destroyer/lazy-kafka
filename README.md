@@ -2,6 +2,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/lazy-kafka.svg)](https://pypi.org/project/lazy-kafka)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/lazy-kafka.svg)](https://pypi.org/project/lazy-kafka)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/lazy-kafka/lazy-kafka/trunk/.github/badges/coverage-badge.json&style=flat)](https://github.com/lazy-kafka/lazy-kafka/actions)
 
 -----
 

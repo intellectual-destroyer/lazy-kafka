@@ -70,6 +70,11 @@ class ContentSwitcher(Container):
         )
         self._initial = initial
 
+    @property
+    def initial(self) -> str | None:
+        """The ID of the initial widget to show."""
+        return self._initial
+
     def _on_mount(self, _: Mount) -> None:  # typing: ignore
         """Perform the initial setup of the widget once the DOM is ready."""
         initial = self._initial

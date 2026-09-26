@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
+class ConnectionRefusedError(Exception):
+    """Connection was refused."""
+
+    pass
+
+
 @dataclass(frozen=True, slots=False)
 class ConnectorData:
     """Connector Data.
@@ -103,10 +109,28 @@ class Connect:
         return response.json()
 
     async def _ageneric_get_json(self, url: str) -> dict[str, Any]:
-        _LOGGER.debug("%s request: %s", self, url)
-        async with httpx.AsyncClient() as client:
-            response = await client.get(self.host + url)
-            return response.json()
+        """Generic async GET request."""
+        _LOGGER.debug("%s GET request: %s", self, url)
+        response = await self._client.get(url)
+        return response.json()
+
+    async def _ageneric_post_json(self, url: str, json_data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Generic async POST request with JSON."""
+        _LOGGER.debug("%s POST request: %s", self, url)
+        response = await self._client.post(url, json=json_data)
+        return response.json()
+
+    async def _ageneric_put_json(self, url: str, json_data: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Generic async PUT request with JSON."""
+        _LOGGER.debug("%s PUT request: %s", self, url)
+        response = await self._client.put(url, json=json_data)
+        return response.json()
+
+    async def _ageneric_delete(self, url: str) -> dict[str, Any]:
+        """Generic async DELETE request."""
+        _LOGGER.debug("%s DELETE request: %s", self, url)
+        response = await self._client.delete(url)
+        return response.json()
 
     ainfo = partialmethod(_ageneric_get_json, "/")
     ainfo.__doc__ = """Connect Cluster information.
@@ -114,6 +138,7 @@ class Connect:
     Top-level (root) request that gets the version of the Connect worker that
     serves the REST request, the git commit ID of the source code, and the
     Kafka cluster ID that the worker is connected to.
+
     """
 
     alist: partialmethod[Coroutine[Any, Any, dict[str, ConnectorData]]] = partialmethod(
@@ -130,6 +155,54 @@ class Connect:
         return connector_id.to_dict()
 
     asubjects = alist
+
+    # Methods for managing connectors
+    async def aconnectors(self) -> dict[str, Any]:
+        """Get all connectors."""
+        return await self._ageneric_get_json("/connectors")
+
+    async def aconnector(self, name: str) -> dict[str, Any]:
+        """Get a specific connector."""
+        return await self._ageneric_get_json(f"/connectors/{name}")
+
+    async def aconnector_status(self, name: str) -> dict[str, Any]:
+        """Get connector status."""
+        return await self._ageneric_get_json(f"/connectors/{name}/status")
+
+    async def aconnector_create(self, name: str, config: dict[str, Any]) -> dict[str, Any]:
+        """Create a connector."""
+        return await self._ageneric_post_json("/connectors", {"name": name, "config": config})
+
+    async def aconnector_update(self, name: str, config: dict[str, Any]) -> dict[str, Any]:
+        """Update a connector."""
+        return await self._ageneric_put_json(f"/connectors/{name}/config", config)
+
+    async def aconnector_delete(self, name: str) -> dict[str, Any]:
+        """Delete a connector."""
+        return await self._ageneric_delete(f"/connectors/{name}")
+
+    async def aconnector_pause(self, name: str) -> dict[str, Any]:
+        """Pause a connector."""
+        return await self._ageneric_put_json(f"/connectors/{name}/pause", None)
+
+    async def aconnector_resume(self, name: str) -> dict[str, Any]:
+        """Resume a connector."""
+        return await self._ageneric_put_json(f"/connectors/{name}/resume", None)
+
+    async def aconnector_restart(self, name: str) -> dict[str, Any]:
+        """Restart a connector."""
+        return await self._ageneric_post_json(f"/connectors/{name}/restart", None)
+
+    # Backwards compatibility aliases
+    connectors = aconnectors
+    connector = aconnector
+    connector_status = aconnector_status
+    connector_create = aconnector_create
+    connector_update = aconnector_update
+    connector_delete = aconnector_delete
+    connector_pause = aconnector_pause
+    connector_resume = aconnector_resume
+    connector_restart = aconnector_restart
 
     # TODO: Post connector [Ref](https://docs.confluent.io/platform/current/connect/references/restapi.html#post--connectors)
     # TODO: Put Connector - update config

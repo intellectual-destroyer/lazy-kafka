@@ -45,6 +45,24 @@ class ValidSchemaType(Validator):
         return value in registry.SchemaTypes
 
 
+class SubjectInput(Input):
+    """A custom Input widget for subject names with validation."""
+
+    def validate(self, value: str) -> ValidationResult:
+        """Validate the subject name."""
+        if not value or not value.strip():
+            return ValidationResult.failure("Subject name cannot be empty")
+        # Basic validation - subject names should not contain control characters
+        if any(ord(c) < 32 for c in value):
+            return ValidationResult.failure("Subject name contains invalid characters")
+        return ValidationResult.success()
+
+    @staticmethod
+    def is_valid_schema_type(value: str) -> bool:
+        """Check if a schema type is valid."""
+        return value in registry.SchemaTypes
+
+
 class CreateDialog(Container, can_focus=True):
     """Modal to display on creating new schema."""
 
@@ -84,6 +102,10 @@ class CreateDialog(Container, can_focus=True):
             self.schema_type = schema_type
             self.schema = schema
             super().__init__()
+
+    def __init__(self, selected_id: str | None = None, *args, **kwargs):
+        self.selected_id = selected_id
+        super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
         text_area = TextArea(show_line_numbers=True, id="editor").code_editor(
@@ -141,23 +163,25 @@ class DeleteDialog(Container, can_focus=True):
     class Delete(Message):
         """Color selected message."""
 
-        def __init__(self, selected_id: str) -> None:
+        def __init__(self, selected_id: str, selected_version: int | None = None) -> None:
             self.selected_id = selected_id
+            self.selected_version = selected_version
             super().__init__()
 
-    def __init__(self, selected_id: registry.Subject, *args, **kwargs):
+    def __init__(self, selected_id: registry.Subject, selected_version: int | None = None, *args, **kwargs):
         self.selected_id = selected_id
+        self.selected_version = selected_version
         super(Container, self).__init__(*args, **kwargs)
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "delete":
-            self.post_message(self.Delete(self.selected_id))
+            self.post_message(self.Delete(self.selected_id, self.selected_version))
         await self.remove()
 
     async def on_key(self, event: events.Key) -> None:
         """Handle D as button press."""
         if event.key == "y":
-            self.post_message(self.Delete(self.selected_id))
+            self.post_message(self.Delete(self.selected_id, self.selected_version))
             await self.remove()
         elif event.key == "n":
             await self.remove()
@@ -209,7 +233,7 @@ class SchemaRegistryPanel(
     @work(exclusive=True, exit_on_error=False)
     async def on_delete_dialog_delete(self, message: DeleteDialog.Delete):
         r = await self.hook.asubjects_delete(
-            message.selected_id, version=self.details["version"]
+            message.selected_id, version=message.selected_version
         )
         _LOGGER.info("Topic deleted %s", r)
 

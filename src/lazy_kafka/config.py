@@ -69,9 +69,11 @@ class RegistryConfiguration:
     def to_config(self, flavor: str = "librdkafka") -> dict[str, str]:
         match flavor:
             case "librdkafka" | "confluent":
+                username = self.username or ""
+                password = self.password or ""
                 return {
                     "url": self.host,
-                    "basic.auth.user.info": f"{self.username}:{self.password}",
+                    "basic.auth.user.info": f"{username}:{password}",
                 }
             case _:
                 raise ValueError("Unsupported configuration flavor.")

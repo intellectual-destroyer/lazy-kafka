@@ -2,10 +2,10 @@ name: Build
 
 on:
   pull_request:
+  pull_request_target:
   push:
     branches:
       - trunk
-      - ci-cd
     tags:
       - "v*"
   workflow_dispatch:
@@ -17,7 +17,8 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   build:
@@ -49,6 +50,9 @@ jobs:
         # Dependabot's lockfile updates honest.
         run: uv sync --locked
 
+      - name: Install test dependencies
+        run: uv pip install pytest-asyncio pytest-mock pytest-cov
+
       - name: Build sdist and wheel
         run: uv build
 
@@ -61,13 +65,13 @@ jobs:
           uv run --isolated --no-project --with "$wheel" \
             python -c "import lazy_kafka; print(lazy_kafka.__name__)"
 
-      - name: Run tests
+      - name: Run tests with coverage
         # The test suite is currently empty, and pytest exits 5 ("no tests
         # collected") in that case. Treat only that specific code as a pass so
         # this step starts gating merges the moment the first test lands.
         run: |
           set +e
-          uv run --with pytest pytest -q
+          uv run --with pytest pytest --cov=src/lazy_kafka --cov-report=term --cov-report=xml --cov-fail-under=10 -q
           code=$?
           set -e
           if [ "$code" -eq 5 ]; then
@@ -75,6 +79,28 @@ jobs:
             exit 0
           fi
           exit "$code"
+
+      - name: Comment PR with coverage
+        if: success() && github.event_name == 'pull_request_target'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          coverage-file: coverage.xml
+          minimum-coverage: 10
+          badge-title: Coverage
+          create-badge: false
+          comment-on-pr: true
+
+      - name: Generate coverage badge
+        if: success() && github.ref == 'refs/heads/trunk'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          coverage-file: coverage.xml
+          minimum-coverage: 10
+          badge-title: Coverage
+          badge-directory: .github/badges
+          badge-filename: coverage-badge.json
+          create-badge: true
+          comment-on-pr: false
 
       - name: Upload the distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

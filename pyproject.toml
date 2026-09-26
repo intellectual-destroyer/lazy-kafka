@@ -64,6 +64,7 @@ app = "textual run --dev --port 7342 src/lazy_kafka/__main__.py"
 [tool.hatch.envs.test]
 extra-dependencies = [
     "pytest >= 8.0.0",
+    "pytest-asyncio >= 0.23.0",
     "versioningit >= 3.1.2",
     "pytest-cov",
     "pytest-mock >= 3.14.0",

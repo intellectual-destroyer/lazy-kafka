@@ -38,7 +38,7 @@ class Subject(str):
     """
 
     def to_table_values(self):
-        return self
+        return (self,)
 
     @override
     def __iter__(self):
@@ -46,7 +46,7 @@ class Subject(str):
 
 
 class MetaEnum(EnumMeta):
-    """Implement `in`."""
+    """Implement `in` and case-insensitive enum."""
 
     def __contains__(cls, item):
         try:
@@ -54,6 +54,25 @@ class MetaEnum(EnumMeta):
         except ValueError:
             return False
         return True
+    
+    def __getitem__(cls, name):
+        """Make enum case-insensitive for item access."""
+        if isinstance(name, str):
+            name_upper = name.upper()
+            if hasattr(cls, name_upper):
+                return getattr(cls, name_upper)
+        return super().__getitem__(name)
+    
+    def __call__(cls, value, *args, **kwargs):
+        """Make enum case-insensitive by converting value to uppercase."""
+        if isinstance(value, str):
+            value_upper = value.upper()
+            # Try each member's value
+            for member in cls:
+                if member.value.upper() == value_upper:
+                    return member
+        # If not found, raise ValueError as normal
+        return super().__call__(value, *args, **kwargs)
 
 
 class SubjectDetails(TypedDict):
@@ -162,7 +181,7 @@ class SchemaRegistry:
         return await self._client.post(url=f"/subjects/{subject}/versions", json=data)
 
     def _serialize_json_schema(self, schema: object) -> str:
-        return json.dumps(schema)
+        return json.dumps(schema, sort_keys=True)
 
 
 async def test_async_api():
