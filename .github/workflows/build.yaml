@@ -84,23 +84,20 @@ jobs:
         if: success() && github.event_name == 'pull_request_target'
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
-          coverage-file: coverage.xml
-          minimum-coverage: 10
-          badge-title: Coverage
-          create-badge: false
-          comment-on-pr: true
+          COVERAGE_PATH: coverage.xml
+          MINIMUM_GREEN: 10
+          MINIMUM_ORANGE: 10
+          COMMENT_ON_PR: true
 
       - name: Generate coverage badge
         if: success() && github.ref == 'refs/heads/trunk'
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
-          coverage-file: coverage.xml
-          minimum-coverage: 10
-          badge-title: Coverage
-          badge-directory: .github/badges
-          badge-filename: coverage-badge.json
-          create-badge: true
-          comment-on-pr: false
+          COVERAGE_PATH: coverage.xml
+          MINIMUM_GREEN: 10
+          MINIMUM_ORANGE: 10
+          COMMENT_ON_PR: false
+          USE_GH_PAGES_HTML_URL: false
 
       - name: Upload the distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
